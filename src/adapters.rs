@@ -1,50 +1,66 @@
 use crate::domain::Task;
-use crate::ports::TaskRepository;
+use crate::ports::{TaskManager, TaskOperations, TaskRepository};
+use crate::FILE_PATH;
 use std::fs::{File, OpenOptions};
-use std::io::Result;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
+use std::io::{Read, Result};
 use std::path::Path;
 
-impl TaskRepository for Vec<Task> {
-    fn save(&mut self, file_path: String, task: Task) -> Result<()> {
-        println!("Saving task to {}", file_path);
+#[derive(Clone)]
+pub struct FileRepository {
+    pub file_path: String,
+}
 
-        // Open the file in append mode, or create it if it doesn't exist
+impl TaskRepository for FileRepository {
+    fn save(&self, tasks: Vec<Task>) -> io::Result<()> {
+        let file_path = Path::new(&self.file_path);
         let mut file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create(true)
-            .append(true)
             .open(file_path)?;
 
-        // Write the single task to file
-        let task_str = format!(
-            "ID: {}, Description: {}, Status: {}\n",
-            task.id, task.description, task.status
-        );
-        file.write_all(task_str.as_bytes())?;
-
-        // Optionally, add the task to self.tasks
-        self.push(task);
-
+        let data: String = serde_json::to_string(&tasks)?;
+        file.write_all(data.as_bytes())?;
         Ok(())
     }
 
-    fn list(&self, file_path: &str) -> Result<Vec<Task>> {
-        let path = Path::new(file_path);
-        let file = File::open(path)?;
-        let reader = io::BufReader::new(file);
+    fn retrieve(&self, _file_path: &str) -> Result<Vec<Task>> {
+        let file_path = Path::new(&self.file_path);
+        let mut file = File::open(file_path)?;
+        let mut data = String::new();
+        file.read_to_string(&mut data)?;
+        let tasks: Vec<Task> = serde_json::from_str(&data)?;
+        Ok(tasks)
+    }
+}
+impl<T: TaskRepository> TaskOperations for TaskManager<T> {
+    fn delete_task(&self, task_id: &str, tasks: &mut Vec<Task>) -> io::Result<Task> {
+        // No need to load tasks from the repository now, as we're passing it in
 
-        for line in reader.lines() {
-            match line {
-                Ok(task) => {
-                    println!("Task: {}", task);
-                }
-                Err(e) => {
-                    eprintln!("Error reading line: {}", e);
-                }
-            }
+        // Find the task by ID and mark it as done
+        if let Some(index) = tasks.iter().position(|t| t.id == task_id) {
+            let task = tasks[index].clone();
+            let done_task = task.done();
+            tasks[index] = done_task.clone();
+
+            // Save the updated tasks back to the repository
+            self.repository.save(tasks.to_vec())?;
+
+            Ok(done_task)
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Task not found".to_string(),
+            ))
         }
+    }
 
-        Ok(self.clone())
+    fn add_task(&self, _description: &str) -> Result<Task> {
+        Ok(Task::new(_description))
+    }
+
+    fn list_tasks(&self) -> Result<Vec<Task>> {
+        self.repository.retrieve("")
     }
 }
