@@ -38,7 +38,7 @@ fn main() {
     let task_repository = FileRepository {
         file_path: FILE_PATH.to_string(),
     };
-    let mut manager = TaskManager {
+    let manager = TaskManager {
         repository: task_repository.clone(),
     };
 
