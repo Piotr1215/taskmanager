@@ -30,6 +30,7 @@ enum Commands {
 }
 
 // Constants are usually in SCREAMING_SNAKE_CASE.
+// TODO: use env for the task.json path
 const FILE_PATH: &str = "/home/decoder/.tasks.json";
 
 fn main() {
