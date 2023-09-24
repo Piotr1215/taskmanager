@@ -1,6 +1,5 @@
 use crate::domain::Task;
 use crate::ports::{TaskManager, TaskOperations, TaskRepository};
-use crate::FILE_PATH;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::io::{Read, Result};

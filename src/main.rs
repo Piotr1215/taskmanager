@@ -6,6 +6,7 @@ mod domain;
 mod ports;
 use domain::Task;
 use ports::{TaskManager, TaskOperations, TaskRepository};
+use std::env;
 #[allow(unused_imports)]
 use std::io::Result;
 
@@ -30,21 +31,24 @@ enum Commands {
 }
 
 // Constants are usually in SCREAMING_SNAKE_CASE.
-// TODO: use env for the task.json path
-const FILE_PATH: &str = "/home/decoder/.tasks.json";
+const TASKS_FILE: &str = ".tasks.json";
 
 fn main() {
+    // Fetch the HOME environment variable
+    let home = env::var("HOME").expect("HOME variable not set");
+    // combine the TASKS_FILE with the home directory
+    let task_file_path = format!("{}/{}", home, TASKS_FILE);
     let cli = Cli::parse();
     // Initialize FileRepository with the file path
     let task_repository = FileRepository {
-        file_path: FILE_PATH.to_string(),
+        file_path: task_file_path,
     };
     let manager = TaskManager {
         repository: task_repository.clone(),
     };
 
     // Retrieve tasks from the file
-    let mut tasks = match task_repository.retrieve(FILE_PATH) {
+    let mut tasks = match task_repository.retrieve(TASKS_FILE) {
         Ok(t) => t,
         Err(e) => {
             eprintln!("Failed to retrieve tasks: {}", e);
@@ -63,12 +67,13 @@ fn main() {
             {
                 if let Err(e) = task_repository.save(tasks) {
                     eprintln!("Failed to save task: {}", e);
+                    println!("Failed to save {}", new_task.description);
                 }
             }
         }
         Some(Commands::List {}) => {
             println!("Listing all tasks");
-            match task_repository.retrieve(FILE_PATH) {
+            match task_repository.retrieve(TASKS_FILE) {
                 Ok(tasks) => {
                     for task in tasks {
                         println!("Task: {:?}", task);
@@ -123,7 +128,7 @@ mod tests {
         let new_task = Task::new("Learn Rust");
         mock_repo.tasks.push(new_task.clone());
 
-        let result = mock_repo.retrieve(FILE_PATH);
+        let result = mock_repo.retrieve(TASKS_FILE);
         assert!(result.is_ok());
 
         let tasks = result.unwrap();
