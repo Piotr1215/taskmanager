@@ -19,15 +19,15 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// does testing things
+    /// add a task
     Add {
-        /// lists test values
+        /// description of the task
         description: String,
     },
+    /// list all tasks
     List {},
-    Done {
-        task_id: String,
-    },
+    /// mark a task as done
+    Done { task_id: String },
 }
 
 // Constants are usually in SCREAMING_SNAKE_CASE.
